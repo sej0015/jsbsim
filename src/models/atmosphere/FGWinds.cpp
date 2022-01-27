@@ -84,9 +84,17 @@ FGWinds::FGWinds(FGFDMExec* fdmex) : FGModel(fdmex)
   wind_from_clockwise = 0.0;
   psiw = 0.0;
 
+  convVeloScale = 0.0;
+  convVeloScaleSTD = 0;
+  convLayerThickness = 1000; //ft
+  convLayerThicknessSTD = 0;
+  thermalAreaWidth = 1000; //ft
+  thermalAreaHeight = 1000; //ft
+
   vGustNED.InitMatrix();
   vTurbulenceNED.InitMatrix();
   vCosineGust.InitMatrix();
+  vThermals.InitMatrix();
 
   // Milspec turbulence model
   windspeed_at_20ft = 0.;
@@ -127,6 +135,7 @@ bool FGWinds::InitModel(void)
   vGustNED.InitMatrix();
   vTurbulenceNED.InitMatrix();
   vCosineGust.InitMatrix();
+  vThermals.InitMatrix();
 
   oneMinusCosineGust.gustProfile.Running = false;
   oneMinusCosineGust.gustProfile.elapsedTime = 0.0;
@@ -143,8 +152,9 @@ bool FGWinds::Run(bool Holding)
 
   if (turbType != ttNone) Turbulence(in.AltitudeASL);
   if (oneMinusCosineGust.gustProfile.Running) CosineGust();
+  if (convVeloScale != 0) UpdateThermals();
 
-  vTotalWindNED = vWindNED + vGustNED + vCosineGust + vTurbulenceNED;
+  vTotalWindNED = vWindNED + vGustNED + vCosineGust + vTurbulenceNED + vThermals;
 
    // psiw (Wind heading) is the direction the wind is blowing towards
   if (vWindNED(eX) != 0.0) psiw = atan2( vWindNED(eY), vWindNED(eX) );
@@ -445,42 +455,14 @@ void FGWinds::CosineGust()
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-void FGWinds::NumberOfUpDownburstCells(int num)
-{
-  for (unsigned int i=0; i<UpDownBurstCells.size();i++) delete UpDownBurstCells[i];
-  UpDownBurstCells.clear();
-  if (num >= 0) {
-    for (int i=0; i<num; i++) UpDownBurstCells.push_back(new struct UpDownBurst);
-  }
-}
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-// Calculates the distance between a specified point (where presumably the
-// Up/Downburst is centered) and the current vehicle location. The distance
-// here is calculated from the Haversine formula.
-
-double FGWinds::DistanceFromRingCenter(double lat, double lon)
-{
-  double deltaLat = in.latitude - lat;
-  double deltaLong = in.longitude - lon;
-  double dLat2 = deltaLat/2.0;
-  double dLong2 = deltaLong/2.0;
-  double a = sin(dLat2)*sin(dLat2)
-             + cos(lat)*cos(in.latitude)*sin(dLong2)*sin(dLong2);
-  double c = 2.0*atan2(sqrt(a), sqrt(1.0 - a));
-  double d = in.planetRadius*c;
-  return d;
-}
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-void FGWinds::UpDownBurst()
+void FGWinds::UpdateThermals()
 {
 
-  for (unsigned int i=0; i<UpDownBurstCells.size(); i++) {
-    /*double d =*/ DistanceFromRingCenter(UpDownBurstCells[i]->ringLatitude, UpDownBurstCells[i]->ringLongitude);
+  vThermals.InitMatrix(0); ///Initialize the thermal updraft veloicty to 0
+  
+  ///Determine the thermal outer radius
+  
 
-  }
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -523,16 +505,6 @@ void FGWinds::bind(void)
   PropertyManager->Tie("atmosphere/cosine-gust/Z-velocity-ft_sec", this, (Ptr)0L, &FGWinds::GustZComponent);
   PropertyManager->Tie("atmosphere/cosine-gust/start", this, static_cast<bool (FGWinds::*)(void) const>(nullptr), &FGWinds::StartGust);
 
-  // User-specified Up- Down-burst parameters
-  PropertyManager->Tie("atmosphere/updownburst/number-of-cells", this, (PMFt)0L, &FGWinds::NumberOfUpDownburstCells);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-//  PropertyManager->Tie("atmosphere/updownburst/", this, (Ptr)0L, &FGWinds::);
-
   // User-specified turbulence (local navigational/geographic frame: N-E-D)
   PropertyManager->Tie("atmosphere/turb-north-fps", this, eNorth, (PMF)&FGWinds::GetTurbNED,
                                                           (PMFd)&FGWinds::SetTurbNED);
@@ -563,6 +535,13 @@ void FGWinds::bind(void)
   PropertyManager->Tie("atmosphere/total-wind-east-fps",  this, eEast,  (PMF)&FGWinds::GetTotalWindNED);
   PropertyManager->Tie("atmosphere/total-wind-down-fps",  this, eDown,  (PMF)&FGWinds::GetTotalWindNED);
 
+  // Parameters for thermal model
+  PropertyManager->Tie("atmosphere/thermal_conv_velo_scale", this, &FGWinds::GetConvVeloScale, &FGWinds::SetConvVeloScale);
+  PropertyManager->Tie("atmosphere/thermal_conv_velo_scale_std", this, &FGWinds::GetConvVeloScaleSTD, &FGWinds::SetConvVeloScaleSTD);
+  PropertyManager->Tie("atmosphere/thermal_conv_layer_thickness", this, &FGWinds::GetConvLayerThickness, &FGWinds::SetConvLayerThickness);
+  PropertyManager->Tie("atmosphere/thermal_conv_layer_thickness_std", this, &FGWinds::GetConvLayerThicknessSTD, &FGWinds::SetConvLayerThicknessSTD);
+  PropertyManager->Tie("atmosphere/thermal_area_width", this, &FGWinds::GetThermalAreaWidth, &FGWinds::SetThermalAreaWidth);
+  PropertyManager->Tie("atmosphere/thermal_area_height", this, &FGWinds::GetThermalAreaHeight, &FGWinds::SetThermalAreaHeight);
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

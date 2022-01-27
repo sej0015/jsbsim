@@ -305,23 +305,16 @@ public:
     };
   };
 
-  /// Stores information about a specified Up- or Down-burst.
-  struct UpDownBurst {
-    double ringLatitude;                           ///<- The latitude of the downburst run (radians)
-    double ringLongitude;                          ///<- The longitude of the downburst run (radians)
-    double ringAltitude;                           ///<- The altitude of the ring (feet).
-    double ringRadius;                             ///<- The radius of the ring (feet).
-    double ringCoreRadius;                         ///<- The cross-section "core" radius of the ring (feet).
-    double circulation;                            ///<- The circulation (gamma) (feet-squared per second).
-    struct OneMinusCosineProfile oneMCosineProfile;///<- A gust profile structure.
-    UpDownBurst() {                                ///<- Constructor
-      ringLatitude = ringLongitude = 0.0;
-      ringAltitude = 1000.0;
-      ringRadius = 2000.0;
-      ringCoreRadius = 100.0;
-      circulation = 100000.0;
-    }
+  // / Stores te information about a single thermal updraft.
+  struct ThermalUpdraft {
+    double x_loc;
+    double y_loc;
+    double convVeloScale;
+    double convLayerThickness;
+    double initiation_time;
+    double end_of_life;
   };
+
 
   // 1 - Cosine gust setters
   /// Initiates the execution of the gust.
@@ -350,7 +343,23 @@ public:
   virtual void GustZComponent(double z) {oneMinusCosineGust.vWind(eZ) = z;}
 
   // Up- Down-burst functions
-  void NumberOfUpDownburstCells(int num);
+  virtual double GetConvVeloScale() const { return convVeloScale;}
+  virtual void SetConvVeloScale(double cvs) {convVeloScale = cvs;}
+
+  virtual double GetConvVeloScaleSTD() const { return convVeloScaleSTD;}
+  virtual void SetConvVeloScaleSTD(double cvsstd) {convVeloScaleSTD = cvsstd;}
+
+  virtual double GetConvLayerThickness() const { return convLayerThickness;}
+  virtual void SetConvLayerThickness(double clt) {convLayerThickness = clt;}
+
+  virtual double GetConvLayerThicknessSTD() const { return convLayerThicknessSTD;}
+  virtual void SetConvLayerThicknessSTD(double cltstd) {convLayerThicknessSTD = cltstd;}
+
+  virtual double GetThermalAreaWidth() const { return thermalAreaWidth;}
+  virtual void SetThermalAreaWidth(double taw) {thermalAreaWidth = taw;}
+
+  virtual double GetThermalAreaHeight() const { return thermalAreaHeight;}
+  virtual void SetThermalAreaHeight(double tah) {thermalAreaHeight = tah;}
 
   struct Inputs {
     double V;
@@ -379,7 +388,6 @@ private:
   FGColumnVector3 vTurbPQR;
 
   struct OneMinusCosineGust oneMinusCosineGust;
-  std::vector <struct UpDownBurst*> UpDownBurstCells;
 
   // Dryden turbulence model
   double windspeed_at_20ft; ///< in ft/s
@@ -392,10 +400,19 @@ private:
   FGColumnVector3 vGustNED;
   FGColumnVector3 vCosineGust;
   FGColumnVector3 vBurstGust;
+  FGColumnVector3 vThermals;
   FGColumnVector3 vTurbulenceNED;
 
   void Turbulence(double h);
-  void UpDownBurst();
+  
+  // Variables and functions for themal model
+  double convVeloScale;
+  double convVeloScaleSTD;
+  double convLayerThickness;
+  double convLayerThicknessSTD;
+  double thermalAreaWidth;
+  double thermalAreaHeight;
+  void UpdateThermals();
 
   void CosineGust();
   double CosineGustProfile( double startDuration, double steadyDuration,
