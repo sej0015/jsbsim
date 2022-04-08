@@ -40,6 +40,7 @@ INCLUDES
 
 #include "models/FGModel.h"
 #include "math/FGMatrix33.h"
+#include "math/FGLocation.h"
 
 /*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 FORWARD DECLARATIONS
