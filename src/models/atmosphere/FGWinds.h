@@ -372,6 +372,7 @@ public:
     FGMatrix33 Tl2b;
     FGMatrix33 Tw2b;
     double totalDeltaT;
+    FGLocation vLocation;
   } in;
 
 private:
@@ -412,6 +413,7 @@ private:
   double convLayerThicknessSTD;
   double thermalAreaWidth;
   double thermalAreaHeight;
+  FGLocation thermalLocation;
   void UpdateThermals();
 
   void CosineGust();

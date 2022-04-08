@@ -136,6 +136,7 @@ bool FGWinds::InitModel(void)
   vTurbulenceNED.InitMatrix();
   vCosineGust.InitMatrix();
   vThermals.InitMatrix();
+  thermalLocation = in.vLocation.LocalToLocation(FGColumnVector3(0.0, 0.0, 0.0));
 
   oneMinusCosineGust.gustProfile.Running = false;
   oneMinusCosineGust.gustProfile.elapsedTime = 0.0;
@@ -458,6 +459,14 @@ void FGWinds::CosineGust()
 void FGWinds::UpdateThermals()
 {
 
+  double thermal_latitude = thermalLocation.GetLatitude();
+  double thermal_longitude = thermalLocation.GetLongitude();
+  double dist_to_thermal = thermalLocation.GetDistanceTo(thermal_longitude, thermal_latitude);
+  if ((dist_to_thermal < thermalAreaWidth) & (in.DistanceAGL < thermalAreaHeight)) {
+    vThermals(3) = convVeloScale;
+  } else {
+    vThermals(3) = 0.0;
+  }
   vThermals.InitMatrix(0); ///Initialize the thermal updraft veloicty to 0
   
   ///Determine the thermal outer radius
