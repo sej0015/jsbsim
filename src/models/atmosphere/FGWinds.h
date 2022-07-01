@@ -271,6 +271,26 @@ public:
   virtual void   SetProbabilityOfExceedence( int idx) {probability_of_exceedence_index = idx;}
   virtual int    GetProbabilityOfExceedence() const { return probability_of_exceedence_index;}
 
+  
+  // Up- Down-burst functions
+  virtual double GetConvVeloScale() const { return convVeloScale;}
+  virtual void SetConvVeloScale(double cvs) {convVeloScale = cvs;}
+
+  virtual double GetConvVeloScaleSTD() const { return convVeloScaleSTD;}
+  virtual void SetConvVeloScaleSTD(double cvsstd) {convVeloScaleSTD = cvsstd;}
+
+  virtual double GetConvLayerThickness() const { return convLayerThickness;}
+  virtual void SetConvLayerThickness(double clt) {convLayerThickness = clt;}
+
+  virtual double GetConvLayerThicknessSTD() const { return convLayerThicknessSTD;}
+  virtual void SetConvLayerThicknessSTD(double cltstd) {convLayerThicknessSTD = cltstd;}
+
+  virtual double GetThermalAreaWidth() const { return 10.0;}
+  virtual void SetThermalAreaWidth(double taw) {thermalAreaWidth = taw;}
+
+  virtual double GetThermalAreaHeight() const { return thermalAreaHeight;}
+  virtual void SetThermalAreaHeight(double tah) {thermalAreaHeight = tah;}
+
   // Stores data defining a 1 - cosine gust profile that builds up, holds steady
   // and fades out over specified durations.
   struct OneMinusCosineProfile {
@@ -343,32 +363,12 @@ public:
   /// Specifies the Z component of velocity in the specified gust frame (ft/sec).
   virtual void GustZComponent(double z) {oneMinusCosineGust.vWind(eZ) = z;}
 
-  // Up- Down-burst functions
-  virtual double GetConvVeloScale() const { return convVeloScale;}
-  virtual void SetConvVeloScale(double cvs) {convVeloScale = cvs;}
-
-  virtual double GetConvVeloScaleSTD() const { return convVeloScaleSTD;}
-  virtual void SetConvVeloScaleSTD(double cvsstd) {convVeloScaleSTD = cvsstd;}
-
-  virtual double GetConvLayerThickness() const { return convLayerThickness;}
-  virtual void SetConvLayerThickness(double clt) {convLayerThickness = clt;}
-
-  virtual double GetConvLayerThicknessSTD() const { return convLayerThicknessSTD;}
-  virtual void SetConvLayerThicknessSTD(double cltstd) {convLayerThicknessSTD = cltstd;}
-
-  virtual double GetThermalAreaWidth() const { return thermalAreaWidth;}
-  virtual void SetThermalAreaWidth(double taw) {thermalAreaWidth = taw;}
-
-  virtual double GetThermalAreaHeight() const { return thermalAreaHeight;}
-  virtual void SetThermalAreaHeight(double tah) {thermalAreaHeight = tah;}
 
   struct Inputs {
     double V;
     double wingspan;
     double DistanceAGL;
     double AltitudeASL;
-    double longitude;
-    double latitude;
     double planetRadius;
     FGMatrix33 Tl2b;
     FGMatrix33 Tw2b;
@@ -414,7 +414,9 @@ private:
   double convLayerThicknessSTD;
   double thermalAreaWidth;
   double thermalAreaHeight;
-  FGLocation thermalLocation;
+  double thermal_geod_lat;
+  double thermal_long;
+  bool have_initial_location = false;
   void UpdateThermals();
 
   void CosineGust();

@@ -136,7 +136,8 @@ bool FGWinds::InitModel(void)
   vTurbulenceNED.InitMatrix();
   vCosineGust.InitMatrix();
   vThermals.InitMatrix();
-  thermalLocation = in.vLocation.LocalToLocation(FGColumnVector3(0.0, 0.0, 0.0));
+  thermal_geod_lat = 0.0;
+  thermal_long = 0.0;
 
   oneMinusCosineGust.gustProfile.Running = false;
   oneMinusCosineGust.gustProfile.elapsedTime = 0.0;
@@ -459,19 +460,33 @@ void FGWinds::CosineGust()
 void FGWinds::UpdateThermals()
 {
 
-  double thermal_latitude = thermalLocation.GetLatitude();
-  double thermal_longitude = thermalLocation.GetLongitude();
-  double dist_to_thermal = thermalLocation.GetDistanceTo(thermal_longitude, thermal_latitude);
-  if ((dist_to_thermal < thermalAreaWidth) & (in.DistanceAGL < thermalAreaHeight)) {
-    vThermals(3) = convVeloScale;
-  } else {
-    vThermals(3) = 0.0;
-  }
-  vThermals.InitMatrix(0); ///Initialize the thermal updraft veloicty to 0
-  
-  ///Determine the thermal outer radius
-  
+  // First test will be one thermal located at the aircraft's starting position
 
+  vThermals.InitMatrix(0); ///Initialize the thermal updraft veloicty to 0
+
+  // If we haven't set the thermal's position, set it to where the aircraft is
+  if (!have_initial_location & in.DistanceAGL > 0) {
+    thermal_geod_lat = in.vLocation.GetGeodLatitudeRad();
+    thermal_long = in.vLocation.GetLongitude();
+    have_initial_location = true;
+  }
+
+  double dist_to_thermal = in.vLocation.GetDistanceTo(thermal_long, thermal_geod_lat); // Get the distance between aircraft and thermal (Feet?)
+
+  std::cout << "Height: " << in.DistanceAGL << std::endl;
+  std::cout << "Dist to Thermal: " << dist_to_thermal << std::endl;
+
+  // If the plane is closer to the thermal than the thermal width and lower than the max height and not on the ground
+  if ((dist_to_thermal < thermalAreaWidth) & (in.DistanceAGL < thermalAreaHeight) & (in.DistanceAGL > 10)) {
+    // Set the z-component of the thermal velocity to the convective velocity scale
+    vThermals(3) = -convVeloScale;
+    std::cout << "Updraft at: " << convVeloScale << " ft/s" << std::endl;
+  } else {
+    // Set the z component of the thermal to 0
+    vThermals(3) = 0.0;
+    std::cout << "No Updraft" << std::endl;
+  }
+  
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
