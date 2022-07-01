@@ -149,6 +149,12 @@
   <property> atmosphere/turb-rate </property>
   <property> atmosphere/turb-gain </property>
   <property> atmosphere/turb-rhythmicity </property>
+  <property> atmosphere/thermal_conv_velo_scale </property>
+  <property> atmosphere/thermal_conv_velo_scale_std </property>
+  <property> atmosphere/thermal_conv_layer_thickness </property>
+  <property> atmosphere/thermal_conv_layer_thickness_std </property>
+  <property> atmosphere/thermal_area_width </property>
+  <property> atmosphere/thermal_area_height </property>
   <property> forces/fbx-aero-lbs </property>
   <property> forces/fby-aero-lbs </property>
   <property> forces/fbz-aero-lbs </property>
