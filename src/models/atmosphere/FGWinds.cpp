@@ -473,18 +473,18 @@ void FGWinds::UpdateThermals()
 
   double dist_to_thermal = in.vLocation.GetDistanceTo(thermal_long, thermal_geod_lat); // Get the distance between aircraft and thermal (Feet?)
 
-  std::cout << "Height: " << in.DistanceAGL << std::endl;
-  std::cout << "Dist to Thermal: " << dist_to_thermal << std::endl;
+  // std::cout << "Height: " << in.DistanceAGL << std::endl;
+  // std::cout << "Dist to Thermal: " << dist_to_thermal << std::endl;
 
   // If the plane is closer to the thermal than the thermal width and lower than the max height and not on the ground
   if ((dist_to_thermal < thermalAreaWidth) & (in.DistanceAGL < thermalAreaHeight) & (in.DistanceAGL > 10)) {
     // Set the z-component of the thermal velocity to the convective velocity scale
     vThermals(3) = -convVeloScale;
-    std::cout << "Updraft at: " << convVeloScale << " ft/s" << std::endl;
+    // std::cout << "Updraft at: " << convVeloScale << " ft/s" << std::endl;
   } else {
     // Set the z component of the thermal to 0
     vThermals(3) = 0.0;
-    std::cout << "No Updraft" << std::endl;
+    // std::cout << "No Updraft" << std::endl;
   }
   
 }

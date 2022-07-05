@@ -213,6 +213,10 @@ void FGOutputSocket::PrintHeaders(void)
     socket->Append("NWind");
     socket->Append("EWind");
     socket->Append("DWind");
+    socket->Append("Conv Velo Scale");
+    socket->Append("Conv Layer Thickness");
+    socket->Append("Thermal Area Width");
+    socket->Append("Thermal Area Height");
   }
 
   if (SubSystems & ssMassProps) {
@@ -275,7 +279,10 @@ void FGOutputSocket::Print(void)
   string asciiData, scratch;
 
   if (socket == 0) return;
-  if (!socket->GetConnectStatus()) return;
+  if (!socket->GetConnectStatus()) {
+    std::cout << "Socket on port " << SockPort << " Not Connected" << std::endl;
+    return;
+  }
 
   socket->Clear();
   socket->Append(FDMExec->GetSimTime());
@@ -333,6 +340,10 @@ void FGOutputSocket::Print(void)
     socket->Append(Winds->GetTurbMagnitude());
     socket->Append(Winds->GetTurbDirection());
     socket->Append(Winds->GetTotalWindNED().Dump(","));
+    socket->Append(Winds->GetConvVeloScale());
+    socket->Append(Winds->GetConvLayerThickness());
+    socket->Append(Winds->GetThermalAreaWidth());
+    socket->Append(Winds->GetThermalAreaHeight());
   }
   if (SubSystems & ssMassProps) {
     socket->Append(MassBalance->GetJ()(1,1));
