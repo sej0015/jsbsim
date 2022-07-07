@@ -111,6 +111,7 @@ CLASS DOCUMENTATION
     ground_reactions ON|OFF
     fcs              ON|OFF
     propulsion       ON|OFF
+    thermals         ON|OFF
 </pre>
     NOTE that Time is always output with the data.
 

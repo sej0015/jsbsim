@@ -127,6 +127,8 @@ bool FGOutputType::Load(Element* element)
     SubSystems += ssFCS;
   if (element->FindElementValue("propulsion") == string("ON"))
     SubSystems += ssPropulsion;
+  if (element->FindElementValue("thermals") == string("ON"))
+    SubSystems += ssThermals;
 
   Element *property_element = element->FindElement("property");
 
@@ -269,6 +271,7 @@ void FGOutputType::Debug(int from)
       if (SubSystems & ssGroundReactions) cout << "    Ground parameters logged" << endl;
       if (SubSystems & ssFCS)             cout << "    FCS parameters logged" << endl;
       if (SubSystems & ssPropulsion)      cout << "    Propulsion parameters logged" << endl;
+      if (SubSystems & ssPropulsion)      cout << "    Thermal parameters logged" << endl;
       if (!OutputParameters.empty())      cout << "    Properties logged:" << endl;
       for (auto param: OutputParameters)
         cout << "      - " << param->GetName() << endl;

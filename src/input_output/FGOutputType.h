@@ -187,7 +187,8 @@ public:
     /** Subsystem: Propagate (= 512)         */ ssPropagate       = 512,
     /** Subsystem: Ground Reactions (= 1024) */ ssGroundReactions = 1024,
     /** Subsystem: FCS (= 2048)              */ ssFCS             = 2048,
-    /** Subsystem: Propulsion (= 4096)       */ ssPropulsion      = 4096
+    /** Subsystem: Propulsion (= 4096)       */ ssPropulsion      = 4096,
+    /** Subsystem: Propulsion (= 4096)       */ ssThermals        = 8192
   } subsystems;
 
 protected:

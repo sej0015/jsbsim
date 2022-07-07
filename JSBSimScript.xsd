@@ -44,6 +44,7 @@
               <xs:element name="moments" type="ON-OFF" minOccurs="0"/>
               <xs:element name="aerosurfaces" type="ON-OFF" minOccurs="0"/>
               <xs:element name="coefficients" type="ON-OFF" minOccurs="0"/>
+              <xs:element name="thermals" type="ON-OFF" minOccurs="0"/>
               <xs:element name="property" type="property-with-caption" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
             <xs:attribute name="name" type="xs:string" use="required"/>

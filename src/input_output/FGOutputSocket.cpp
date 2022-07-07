@@ -213,10 +213,6 @@ void FGOutputSocket::PrintHeaders(void)
     socket->Append("NWind");
     socket->Append("EWind");
     socket->Append("DWind");
-    socket->Append("Conv Velo Scale");
-    socket->Append("Conv Layer Thickness");
-    socket->Append("Thermal Area Width");
-    socket->Append("Thermal Area Height");
   }
 
   if (SubSystems & ssMassProps) {
@@ -261,6 +257,9 @@ void FGOutputSocket::PrintHeaders(void)
 
   if (SubSystems & ssPropulsion && Propulsion->GetNumEngines() > 0)
     socket->Append(Propulsion->GetPropulsionStrings(","));
+
+  if (SubSystems & ssThermals)
+    socket->Append("Thermal Info");
 
   for (unsigned int i=0;i<OutputParameters.size();++i) {
     if (!OutputCaptions[i].empty())
@@ -340,10 +339,7 @@ void FGOutputSocket::Print(void)
     socket->Append(Winds->GetTurbMagnitude());
     socket->Append(Winds->GetTurbDirection());
     socket->Append(Winds->GetTotalWindNED().Dump(","));
-    socket->Append(Winds->GetConvVeloScale());
-    socket->Append(Winds->GetConvLayerThickness());
-    socket->Append(Winds->GetThermalAreaWidth());
-    socket->Append(Winds->GetThermalAreaHeight());
+    // socket->Append(Winds->DumpThermalInfo());
   }
   if (SubSystems & ssMassProps) {
     socket->Append(MassBalance->GetJ()(1,1));
@@ -383,6 +379,9 @@ void FGOutputSocket::Print(void)
   }
   if (SubSystems & ssPropulsion && Propulsion->GetNumEngines() > 0) {
     socket->Append(Propulsion->GetPropulsionValues(","));
+  }  
+  if (SubSystems & ssThermals) {
+    socket->Append(Winds->DumpThermalInfo());
   }
 
   for (unsigned int i=0;i<OutputParameters.size();++i) {
