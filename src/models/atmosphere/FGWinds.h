@@ -285,11 +285,13 @@ public:
   virtual double GetConvLayerThicknessSTD() const { return convLayerThicknessSTD;}
   virtual void SetConvLayerThicknessSTD(double cltstd) {convLayerThicknessSTD = cltstd;}
 
-  virtual double GetThermalAreaWidth() const { return 10.0;}
+  virtual double GetThermalAreaWidth() const { return thermalAreaWidth;}
   virtual void SetThermalAreaWidth(double taw) {thermalAreaWidth = taw;}
 
   virtual double GetThermalAreaHeight() const { return thermalAreaHeight;}
   virtual void SetThermalAreaHeight(double tah) {thermalAreaHeight = tah;}
+
+  std::string DumpThermalInfo();
 
   // Stores data defining a 1 - cosine gust profile that builds up, holds steady
   // and fades out over specified durations.
@@ -414,10 +416,17 @@ private:
   double convLayerThicknessSTD;
   double thermalAreaWidth;
   double thermalAreaHeight;
-  double thermal_geod_lat;
-  double thermal_long;
+  double numThermals;
+  double init_geod_lat;
+  double init_long;
+  FGLocation initLocation;
+  vector<FGColumnVector3> thermalLocations;
+  vector<float> thermalStrengths;
+  vector<float> thermalHeights;
   bool have_initial_location = false;
   void UpdateThermals();
+  bool initializedThermals = false;
+  void InitThermals();
 
   void CosineGust();
   double CosineGustProfile( double startDuration, double steadyDuration,

@@ -136,8 +136,9 @@ bool FGWinds::InitModel(void)
   vTurbulenceNED.InitMatrix();
   vCosineGust.InitMatrix();
   vThermals.InitMatrix();
-  thermal_geod_lat = 0.0;
-  thermal_long = 0.0;
+  init_geod_lat = 0.0;
+  init_long = 0.0;
+
 
   oneMinusCosineGust.gustProfile.Running = false;
   oneMinusCosineGust.gustProfile.elapsedTime = 0.0;
@@ -154,7 +155,10 @@ bool FGWinds::Run(bool Holding)
 
   if (turbType != ttNone) Turbulence(in.AltitudeASL);
   if (oneMinusCosineGust.gustProfile.Running) CosineGust();
-  if (convVeloScale != 0) UpdateThermals();
+  if (convVeloScale != 0) {
+    if (!initializedThermals) {InitThermals();}
+    UpdateThermals();
+  }
 
   vTotalWindNED = vWindNED + vGustNED + vCosineGust + vTurbulenceNED + vThermals;
 
@@ -457,36 +461,115 @@ void FGWinds::CosineGust()
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+// Need to initialize the number of thermals and their positions based on the input parameters
+void FGWinds::InitThermals()
+{
+
+  // Find radius of thermals at 50m
+  double r2 = (0.102 * pow((50.0/convLayerThickness),(1.0/3.0)))*(1-(0.25*(50.0/convLayerThickness)))*convLayerThickness;
+
+  numThermals = ceil(0.6*thermalAreaHeight*thermalAreaWidth/(convLayerThickness*r2));
+
+  // Initialize the vectors to the correct sizes
+  thermalLocations.assign(numThermals, FGColumnVector3());
+  thermalStrengths.assign(numThermals, 0);
+  thermalHeights.assign(numThermals, 0);
+
+  // For each thermal, set their locations, strengths, and heights
+  for (int i = 0; i < numThermals; i++) {
+    // Generate the X and Y offsets for the thermals as random numbers
+    thermalLocations[i](1) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaWidth;
+    thermalLocations[i](2) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaHeight;
+    thermalLocations[i](3) = 0;
+
+    thermalStrengths[i] = convVeloScale;
+    thermalHeights[i] = convLayerThickness;
+  }
+  initializedThermals = true;
+}
+
+// Update thermals takes the aircraft's position and calculates the vertical velocity component from
+// the locations of all the thermals around. It also propogates any time related changes to the thermals
 void FGWinds::UpdateThermals()
 {
 
-  // First test will be one thermal located at the aircraft's starting position
-
   vThermals.InitMatrix(0); ///Initialize the thermal updraft veloicty to 0
 
-  // If we haven't set the thermal's position, set it to where the aircraft is
+  // If we haven't set the initial's position, set it to where the aircraft is
   if (!have_initial_location & in.DistanceAGL > 0) {
-    thermal_geod_lat = in.vLocation.GetGeodLatitudeRad();
-    thermal_long = in.vLocation.GetLongitude();
+    initLocation = FGLocation(in.vLocation);
+    init_geod_lat = in.vLocation.GetGeodLatitudeRad();
+    init_long = in.vLocation.GetLongitude();
     have_initial_location = true;
   }
 
-  double dist_to_thermal = in.vLocation.GetDistanceTo(thermal_long, thermal_geod_lat); // Get the distance between aircraft and thermal (Feet?)
+  // Need to find the distance to the nearest thermal and which thermal that is in the list
+  vector<double> dist_to_thermals;
+  dist_to_thermals.assign(numThermals, 0);
+  double dist_to_nearest_thermal = sqrt(pow(thermalAreaWidth, 2) + pow(thermalAreaHeight, 2)); // Initialize to the biggest it could be
+  int best_thermal_index = -1;
+  FGLocation tempLocation;
+  FGLocation cur_thermal_location_global = FGLocation(initLocation);
+  FGColumnVector3 cur_thermal_location_local;
 
-  // std::cout << "Height: " << in.DistanceAGL << std::endl;
-  // std::cout << "Dist to Thermal: " << dist_to_thermal << std::endl;
+  // For each thermal in the list
+  for (int i = 1; i < numThermals; i++) {
+
+    // Find the global location of the current thermal being tested based on the initial position
+    // Need to do some trickery because the ellipse on the location needs to be set a weird way
+    tempLocation = initLocation.LocalToLocation(thermalLocations[i]);
+    cur_thermal_location_global.SetLatitude(tempLocation.GetLatitude());
+    cur_thermal_location_global.SetLongitude(tempLocation.GetLongitude());
+
+    // Find the distance between the vehicle and the thermal but ignore altitude changes
+    cur_thermal_location_global.SetRadius(in.vLocation.GetRadius());
+
+    dist_to_thermals[i] = in.vLocation.GetDistanceTo(cur_thermal_location_global.GetLongitude(),
+                                                         cur_thermal_location_global.GetGeodLatitudeRad());
+
+    // Update the distance to the nearest thermal if this one is closer
+    if (dist_to_nearest_thermal > dist_to_thermals[i]) {
+      dist_to_nearest_thermal = dist_to_thermals[i];
+      best_thermal_index = i; // Also remember the index for getting the strength and height
+    }
+  }
+
+  double test_radius = 200;
+
+  // std::cout << dist_to_nearest_thermal << endl;
 
   // If the plane is closer to the thermal than the thermal width and lower than the max height and not on the ground
-  if ((dist_to_thermal < thermalAreaWidth) & (in.DistanceAGL < thermalAreaHeight) & (in.DistanceAGL > 10)) {
+  if ((dist_to_nearest_thermal < test_radius) & (in.DistanceAGL < thermalHeights[best_thermal_index]) & (in.DistanceAGL > 10)) {
     // Set the z-component of the thermal velocity to the convective velocity scale
-    vThermals(3) = -convVeloScale;
+    vThermals(3) = -thermalStrengths[best_thermal_index];
     // std::cout << "Updraft at: " << convVeloScale << " ft/s" << std::endl;
   } else {
     // Set the z component of the thermal to 0
     vThermals(3) = 0.0;
-    // std::cout << "No Updraft" << std::endl;
   }
   
+  // std::cout << vThermals(3) << endl;
+  // std::cout << convVeloScale << endl;
+  // std::cout << best_thermal_index << endl;
+}
+
+// DumpThermalInfo takes all the information for individual thermals and makes it into a comma 
+// seperated string to be sent to an output. This allows an outside program to plot the thermals
+std::string FGWinds::DumpThermalInfo()
+{
+
+  std::string output;
+
+  output = output + to_string(numThermals);
+  for (int i = 0; i < numThermals; i++) {
+    output = output + "," + to_string(thermalStrengths[i]) + "," 
+                    + to_string(thermalHeights[i]) + ","
+                    + to_string(thermalLocations[i](1)) + ","
+                    + to_string(thermalLocations[i](2));
+
+  }
+
+  return output;
 }
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
