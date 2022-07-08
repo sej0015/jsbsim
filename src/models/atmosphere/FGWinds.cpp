@@ -513,7 +513,7 @@ void FGWinds::UpdateThermals()
   FGColumnVector3 cur_thermal_location_local;
 
   // For each thermal in the list
-  for (int i = 1; i < numThermals; i++) {
+  for (int i = 0; i < numThermals; i++) {
 
     // Find the global location of the current thermal being tested based on the initial position
     // Need to do some trickery because the ellipse on the location needs to be set a weird way
@@ -548,9 +548,13 @@ void FGWinds::UpdateThermals()
     vThermals(3) = 0.0;
   }
   
-  // std::cout << vThermals(3) << endl;
-  // std::cout << convVeloScale << endl;
-  // std::cout << best_thermal_index << endl;
+  FGColumnVector3 local_position = in.vLocation.LocationToLocal(initLocation);
+
+  std::cout << vThermals(3) << endl;
+  std::cout << "x thermal:" << thermalLocations[best_thermal_index](1) << endl;
+  std::cout << "y thermal:" << thermalLocations[best_thermal_index](2) << endl;
+  std::cout << "x plane:" << -local_position(1) << endl;
+  std::cout << "y plane:" << -local_position(2) << endl;
 }
 
 // DumpThermalInfo takes all the information for individual thermals and makes it into a comma 
