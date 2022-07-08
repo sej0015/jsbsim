@@ -548,13 +548,13 @@ void FGWinds::UpdateThermals()
     vThermals(3) = 0.0;
   }
   
-  FGColumnVector3 local_position = in.vLocation.LocationToLocal(initLocation);
+  // FGColumnVector3 local_position = in.vLocation.LocationToLocal(initLocation);
 
-  std::cout << vThermals(3) << endl;
-  std::cout << "x thermal:" << thermalLocations[best_thermal_index](1) << endl;
-  std::cout << "y thermal:" << thermalLocations[best_thermal_index](2) << endl;
-  std::cout << "x plane:" << -local_position(1) << endl;
-  std::cout << "y plane:" << -local_position(2) << endl;
+  // std::cout << vThermals(3) << endl;
+  // std::cout << "x thermal:" << thermalLocations[best_thermal_index](1) << endl;
+  // std::cout << "y thermal:" << thermalLocations[best_thermal_index](2) << endl;
+  // std::cout << "x plane:" << -local_position(1) << endl;
+  // std::cout << "y plane:" << -local_position(2) << endl;
 }
 
 // DumpThermalInfo takes all the information for individual thermals and makes it into a comma 
