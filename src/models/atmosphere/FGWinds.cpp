@@ -84,12 +84,12 @@ FGWinds::FGWinds(FGFDMExec* fdmex) : FGModel(fdmex)
   wind_from_clockwise = 0.0;
   psiw = 0.0;
 
-  convVeloScale = 0.0;
+  convVeloScale = 0.0; // meters
   convVeloScaleSTD = 0;
-  convLayerThickness = 1000; //ft
+  convLayerThickness = 1000; //meters
   convLayerThicknessSTD = 0;
-  thermalAreaWidth = 1000; //ft
-  thermalAreaHeight = 1000; //ft
+  thermalAreaWidth = 1000; //meters
+  thermalAreaHeight = 1000; //meters
 
   vGustNED.InitMatrix();
   vTurbulenceNED.InitMatrix();
@@ -466,7 +466,7 @@ void FGWinds::InitThermals()
 {
 
   // Find radius of thermals at 50m
-  double r2 = (0.102 * pow((50.0/convLayerThickness),(1.0/3.0)))*(1-(0.25*(50.0/convLayerThickness)))*convLayerThickness;
+  double r2 = (0.102 * pow(50.0/convLayerThickness,1.0/3.0))*(1-(0.25*50.0/convLayerThickness))*convLayerThickness;
 
   numThermals = ceil(0.6*thermalAreaHeight*thermalAreaWidth/(convLayerThickness*r2));
 
@@ -478,8 +478,8 @@ void FGWinds::InitThermals()
   // For each thermal, set their locations, strengths, and heights
   for (int i = 0; i < numThermals; i++) {
     // Generate the X and Y offsets for the thermals as random numbers
-    thermalLocations[i](1) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaWidth;
-    thermalLocations[i](2) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaHeight;
+    thermalLocations[i](1) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaWidth * 3.281;
+    thermalLocations[i](2) = (((float) rand() / RAND_MAX) - 0.5) * thermalAreaHeight * 3.281;
     thermalLocations[i](3) = 0;
 
     thermalStrengths[i] = convVeloScale;
@@ -500,6 +500,7 @@ void FGWinds::UpdateThermals()
     initLocation = FGLocation(in.vLocation);
     init_geod_lat = in.vLocation.GetGeodLatitudeRad();
     init_long = in.vLocation.GetLongitude();
+    init_geod_altitude = in.vLocation.GetGeodAltitude();
     have_initial_location = true;
   }
 
@@ -536,25 +537,151 @@ void FGWinds::UpdateThermals()
 
   double test_radius = 200;
 
-  // std::cout << dist_to_nearest_thermal << endl;
-
-  // If the plane is closer to the thermal than the thermal width and lower than the max height and not on the ground
-  if ((dist_to_nearest_thermal < test_radius) & (in.DistanceAGL < thermalHeights[best_thermal_index]) & (in.DistanceAGL > 10)) {
-    // Set the z-component of the thermal velocity to the convective velocity scale
-    vThermals(3) = -thermalStrengths[best_thermal_index];
-    // std::cout << "Updraft at: " << convVeloScale << " ft/s" << std::endl;
-  } else {
-    // Set the z component of the thermal to 0
-    vThermals(3) = 0.0;
-  }
-  
-  // FGColumnVector3 local_position = in.vLocation.LocationToLocal(initLocation);
+  // inputs to this function should be in meters
+  float AGL = 0.1;
+  if (in.vLocation.GetGeodAltitude() - init_geod_altitude > 0) {
+    AGL = (in.vLocation.GetGeodAltitude() - init_geod_altitude)/3.281;
+  } 
+  vThermals(3) = GetThermalEffect(dist_to_nearest_thermal / 3.281, thermalStrengths[best_thermal_index], thermalHeights[best_thermal_index],
+                                  AGL, numThermals);
 
   // std::cout << vThermals(3) << endl;
-  // std::cout << "x thermal:" << thermalLocations[best_thermal_index](1) << endl;
-  // std::cout << "y thermal:" << thermalLocations[best_thermal_index](2) << endl;
-  // std::cout << "x plane:" << -local_position(1) << endl;
-  // std::cout << "y plane:" << -local_position(2) << endl;
+
+}
+
+float FGWinds::GetThermalEffect(float distance, float thermal_strength, float thermal_height, float test_altitude, int num_thermals) {
+  vector<float> r1r2shape = {{0.1400, 0.2500, 0.3600, 0.4700, 0.5800, 0.6900, 0.8000}};
+  vector<vector<float>> Kshape = {{1.5352, 2.5826, -0.0113, -0.1950, 0.0008},
+                                  {1.5265, 3.6054, -0.0176, -0.1265, 0.0005}, 
+                                  {1.4866, 4.8356, -0.0320, -0.0818, 0.0001},
+                                  {1.2042, 7.7904,  0.0848, -0.0445, 0.0001},
+                                  {0.8816, 13.9720, 0.3404, -0.0216, 0.0001},
+                                  {0.7067, 23.9940, 0.5689, -0.0099, 0.0002},
+                                  {0.6189, 42.7965, 0.7157, -0.0033, 0.0001}};
+  bool sflag = true;
+  float current_strength = thermal_strength;
+
+  // Find radius using altitude and thermal height
+  float alt_ratio = test_altitude / thermal_height;
+  float outer_rad = (0.102 * pow(alt_ratio, 1.0/3.0)) * (1-(0.25 * alt_ratio)) * thermal_height;
+
+  // Find the average updraft strength
+  float normalized_strength = (pow(alt_ratio, 1.0/3.0)) * (1 - 1.1*alt_ratio) * current_strength;
+
+  // Calculate the inner radius of the updraft
+  
+  float inner_outer_ratio;
+  if (outer_rad < 10){
+    outer_rad = 10;
+  }
+  if (outer_rad < 600) {
+    inner_outer_ratio = 0.0011*outer_rad+0.14;
+  } else {
+    inner_outer_ratio = 0.8;
+  }
+  float inner_rad = inner_outer_ratio * outer_rad;
+
+  // Calculate the strength at the center of the updraft
+  float core_strength = (3 * normalized_strength * (pow(outer_rad,3)-pow(outer_rad,2) * inner_rad)) / (pow(outer_rad, 3) - pow(inner_rad, 3));
+
+
+  // Calculate the updraft velocity
+  float radius_ratio = distance / outer_rad;
+  float smooth_strength;
+  float ka;
+  float kb;
+  float kc;
+  float kd;
+  if (alt_ratio < 1) {
+    if (radius_ratio < (0.5 * r1r2shape[0] + r1r2shape[1])) {
+      ka = Kshape[0][0];
+      kb = Kshape[0][1];
+      kc = Kshape[0][2];
+      kd = Kshape[0][3];
+    } else if (radius_ratio < (0.5 * r1r2shape[1] + r1r2shape[2])) {
+      ka = Kshape[1][0];
+      kb = Kshape[1][1];
+      kc = Kshape[1][2];
+      kd = Kshape[1][3];
+    } else if (radius_ratio < (0.5 * r1r2shape[2] + r1r2shape[3])) {
+      ka = Kshape[2][0];
+      kb = Kshape[2][1];
+      kc = Kshape[2][2];
+      kd = Kshape[2][3];
+    } else if (radius_ratio < (0.5 * r1r2shape[3] + r1r2shape[4])) {
+      ka = Kshape[3][0];
+      kb = Kshape[3][1];
+      kc = Kshape[3][2];
+      kd = Kshape[3][3];
+    } else if (radius_ratio < (0.5 * r1r2shape[4] + r1r2shape[5])) {
+      ka = Kshape[4][0];
+      kb = Kshape[4][1];
+      kc = Kshape[4][2];
+      kd = Kshape[4][3];
+    } else if (radius_ratio < (0.5 * r1r2shape[5] + r1r2shape[6])) {
+      ka = Kshape[5][0];
+      kb = Kshape[5][1];
+      kc = Kshape[5][2];
+      kd = Kshape[5][3];
+    } else {
+      ka = Kshape[6][0];
+      kb = Kshape[6][1];
+      kc = Kshape[6][2];
+      kd = Kshape[6][3];
+    }
+
+  // Calculate the smoothed vertical velocity
+  smooth_strength = 1.0 / (1 + pow(ka * abs(radius_ratio + kc), kb)) + kd * radius_ratio;
+  if (smooth_strength  < 0) {
+    smooth_strength = 0;
+  }
+  } else {
+    smooth_strength = 0;
+  }
+
+  // Calculate downdraft velocity at teh edge of the updraft
+  float down;
+  if (distance > inner_rad and radius_ratio < 2) {
+    down = 3.14159 / 6.0 * sin(3.14159 * radius_ratio);
+  } else {
+    down = 0;
+  }
+
+  float alt_down_scale;
+  float down_strength;
+  if (alt_ratio > 0.5 and alt_ratio <= 0.9) {
+    alt_down_scale = 2.5 * (alt_ratio - 0.5);
+    down_strength = alt_down_scale * down;
+    if (down_strength > 0) {
+      down_strength = 0;
+    }
+  } else {
+    alt_down_scale = 0;
+    down_strength = 0;
+  }
+
+  float intermediate_strength = smooth_strength * core_strength + down_strength * normalized_strength;
+
+  // Calculate environmental sink velocity
+  float updraft_area = num_thermals * 3.14159 * pow(outer_rad, 2);
+  float total_area = thermalAreaWidth * thermalAreaHeight;
+  float env_strength = 0;
+  if (sflag) {
+    env_strength = -(updraft_area * thermal_strength * (1-alt_down_scale))/(total_area-updraft_area);
+    if (env_strength > 0) {
+      env_strength = 0;
+    }
+  }
+
+  // Stretch the updraft to blend with the sink at the edge
+  float final_strength = 0;
+  if (distance > inner_rad) {
+    final_strength = intermediate_strength * (1 - env_strength/core_strength) + env_strength;
+  } else {
+    final_strength = env_strength;
+  }
+
+  return final_strength;
 }
 
 // DumpThermalInfo takes all the information for individual thermals and makes it into a comma 

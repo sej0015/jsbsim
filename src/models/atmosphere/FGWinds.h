@@ -419,6 +419,7 @@ private:
   double numThermals;
   double init_geod_lat;
   double init_long;
+  double init_geod_altitude;
   FGLocation initLocation;
   vector<FGColumnVector3> thermalLocations;
   vector<float> thermalStrengths;
@@ -427,6 +428,9 @@ private:
   void UpdateThermals();
   bool initializedThermals = false;
   void InitThermals();
+  float GetThermalEffect(float distance, float thermal_strength, 
+                         float thermal_height, float test_altitude,
+                         int num_thermals);
 
   void CosineGust();
   double CosineGustProfile( double startDuration, double steadyDuration,
